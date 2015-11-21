@@ -858,6 +858,8 @@ pr.sim<-function(input, ratio, times){
   
   ###########################################################################
   #pr.sim functionality start
+  input[["type"]]="fit"
+  
   if(is.null(input[["quantiles"]]))
     stop("Quantiles are needed for this approach!")
   input[["sim"]]=TRUE

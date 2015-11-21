@@ -146,7 +146,7 @@ gev3<-function(stress,parameter){
   return(((b-a)/(stress-a)-1)*c2)
 }
 
-gev[["type"]]="diag"
+
 gev.result=pr(gev)
 pr.parplot(gev.result)
 
