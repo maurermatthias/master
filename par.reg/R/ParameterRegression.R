@@ -610,7 +610,7 @@ pr<-function(x){
   #plot and return in case of diagnosis plot
   if(x[["type"]]=="diag"){
     pr.parplot(val)
-    return(NULL);
+    return(val);
   }
   
   #estimate structure parameter

@@ -1,59 +1,101 @@
 \name{pr.sim}
 \alias{pr.sim}
 %- Also NEED an '\alias' for EACH other topic documented here.
-\title{ title test
-%%  ~~function to do ... ~~
+\title{ 
+Perform Parameter-Regression Quality Check by simulation
 }
-\description{ description test
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+\description{ 
+Takes repeatedly a part of the data as input for the function pr() and the other part to perform a chi-squared goodness of fit test.
 }
 \usage{
 pr.sim(input, ratio, times)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{ arguments test
-  \item{input}{ input test
-%%     ~~Describe \code{input} here~~
+  \item{input}{ Input List like used with the function pr().
 }
-  \item{ratio}{ ratio test
-%%     ~~Describe \code{ratio} here~~
+  \item{ratio}{ Number for which 0<ratio<1 holds. Describes how many observations are used for the fitting (per stress-level: rounding is done).
 }
-  \item{times}{ times test
-%%     ~~Describe \code{times} here~~
+  \item{times}{ Describes how often fitting and evaluation is done.
 }
 }
-\details{ details test
+%\details{ details test
 %%  ~~ If necessary, more details than the description above ~~
+%}
+\value{ 
+A list containing the p-values for all performed chi-squared goodness of fit test is returned.
 }
-\value{ value test
-%%  ~Describe the value returned
-%%  If it is a LIST, use
-%%  \item{comp1 }{Description of 'comp1'}
-%%  \item{comp2 }{Description of 'comp2'}
-%% ...
-}
-\references{ references test
+%\references{ references test
 %% ~put references to the literature/web site here ~
+%}
+\author{ 
+Matthias Maurer
 }
-\author{ author test
-%%  ~~who you are~~
-}
-\note{ note test
-%%  ~~further notes~~
+\note{ 
+If a fit does not succeed, the p-value is skipped. The success-rate prompted at the end of the function-execution shows how many fits succeeded.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
-\seealso{ seealso test
+%\seealso{ seealso test
 %% ~~objects to See Also as \code{\link{help}}, ~~~
-}
-\examples{ examples test
-##---- Should be DIRECTLY executable !! ----
-##-- ==>  Define data, use random,
-##--	or do  help(data=index)  for the standard data sets.
+%}
+\examples{ 
+#define input-list
+gev=list();
+gev[["distr"]]="gev"
+gev[["error.type"]]="rel"
+data=load.data()
+gev[["xval"]]=data[,1]
+gev[["yval"]]=data[,2]
+gev[["validity.fun"]]="val.gev"
+gev[["struct.fun"]]=c("gev1","gev2","gev3")
+gev[["struct.start.parameter"]]=c(-0.31,49.67,20809,18.8,69.41)
+gev[["quantiles"]]=1:10/20
 
+#validity function
+val.gev<-function(stress,parameter){
+  k=parameter[1];
+  a=parameter[2];
+  b=parameter[3];
+  c1=parameter[4];
+  c2=parameter[5];
+  if(b<=max(stress) || a>=min(stress) || c1<=0 || c2<=0 || k==0 || min(gev2(stress,parameter))<=0 ){
+    return(FALSE);
+  }else{
+    return(TRUE);
+  }
+}
+
+
+#xi gev-distribution
+gev1<-function(stress,parameter){
+  k=parameter[1];
+  return(k);
+}
+
+#sigma^2 gev-distribution
+gev2<-function(stress,parameter){
+  a=parameter[2];
+  b=parameter[3];
+  c1=parameter[4];
+  return(((b-a)/(stress-a)-1)*c1)
+}
+
+#mu gev-distribution
+gev3<-function(stress,parameter){
+  a=parameter[2];
+  b=parameter[3];
+  c2=parameter[5];
+  return(((b-a)/(stress-a)-1)*c2)
+}
+
+gev[["control"]]=list(maxit=1000)
+
+#perform simulation
+v=pr.sim(gev, 0.9, 50)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
-\keyword{ ~kwd1 }
-\keyword{ ~kwd2 }% __ONLY ONE__ keyword per line
+%\keyword{ ~kwd1 }
+%\keyword{ ~kwd2 }% __ONLY ONE__ keyword per line
