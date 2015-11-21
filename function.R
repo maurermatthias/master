@@ -16,6 +16,19 @@ library('psych')   #df2latex  convert dataframe to latex table (http://artax.kar
 ############################################################################################################
 ###common functions
 
+#convert array to hard-coded text array  
+cr<-function(x){
+  lines=dim(x)[1]
+  col=dim(x)[2]
+  txt=""
+  for(i in 1:lines){
+    for(j in 1:col){
+      txt=paste(txt,"data[",as.character(i),",",as.character(j),"]=",as.character(x[i,j]),"; ",sep="")
+    }
+  }
+  return(txt)
+}
+
 #takes two vektors of the same size, returns those elements of vector
 #one where vector two contains true
 part<-function(data,bool)
