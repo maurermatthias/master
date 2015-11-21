@@ -1,0 +1,16 @@
+{
+    "contents" : "\\name{par.reg-package}\n\\alias{par.reg-package}\n\\alias{par.reg}\n\\docType{package}\n\\title{\nWhat the package does (short line)\n~~ package title ~~\n}\n\\description{\nMore about what it does (maybe more than one line)\n~~ A concise (1-5 lines) description of the package ~~\n}\n\\details{\n\\tabular{ll}{\nPackage: \\tab par.reg\\cr\nType: \\tab Package\\cr\nVersion: \\tab 1.0\\cr\nDate: \\tab 2015-11-21\\cr\nLicense: \\tab What license is it under?\\cr\n}\n~~ An overview of how to use the package, including the most important functions ~~\n}\n\\author{\nWho wrote it\n\nMaintainer: Who to complain to <yourfault@somewhere.net>\n~~ The author and/or maintainer of the package ~~\n}\n\\references{\n~~ Literature or other references for background information ~~\n}\n~~ Optionally other standard keywords, one per line, from file KEYWORDS in the R documentation ~~\n~~ directory ~~\n\\keyword{ package }\n\\seealso{\n~~ Optional links to other man pages, e.g. ~~\n~~ \\code{\\link[<pkg>:<pkg>-package]{<pkg>}} ~~\n}\n\\examples{\n~~ simple examples of the most important functions ~~\n}\n",
+    "created" : 1448121542293.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1875596979",
+    "id" : "87BB3AB8",
+    "lastKnownWriteTime" : 1448121071,
+    "path" : "C:/Users/moja/Dropbox/12 sem/Masterarbeit/R/par.reg/man/par.reg-package.Rd",
+    "project_path" : "man/par.reg-package.Rd",
+    "properties" : {
+    },
+    "source_on_save" : false,
+    "type" : "r_doc"
+}
