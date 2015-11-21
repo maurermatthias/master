@@ -24,7 +24,8 @@ val.norm<-function(stress,parameter){
   b=parameter[2];
   c1=parameter[3];
   c2=parameter[4];
-  if(b<=max(stress) || a>=min(stress) || c1<=0 || c2<=0){
+  sigma.min=min(norm2(stress,parameter))
+  if(b<=max(stress) || a>=min(stress) || c1<=0 || c2<=0 || sigma.min <= 0){
     return(FALSE);
   }else{
     return(TRUE);
@@ -62,6 +63,7 @@ logn[["xval"]]=shen1[,1]
 logn[["yval"]]=shen1[,2]
 logn[["struct.fun"]]=c("logn1","logn2")
 logn[["validity.fun"]]="val.logn"
+logn[["quantiles"]]=1:9/10
 logn[["struct.start.parameter"]]=c(0.9*min(shen1[,1]),1.1*max(shen1[,1]),10,0.3)
 
 #validity function
@@ -147,6 +149,9 @@ gev3<-function(stress,parameter){
 gev.result=pr(gev)
 pr.parplot(gev.result)
 
+gev[["quantiles"]]=1:9/10
+v=pr.sim(gev, 0.5, 500)
+
 
 
 ###########################################################
@@ -161,6 +166,7 @@ gam[["yval"]]=shen1[,2]
 gam[["validity.fun"]]="val.gam"
 gam[["struct.fun"]]=c("gam1","gam2")
 gam[["struct.start.parameter"]]=c(49.67,20809,18.8,20,0)
+gam[["quantiles"]]=1:9/10
 
 #validity function
 val.gam<-function(stress,parameter){
