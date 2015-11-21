@@ -12,7 +12,7 @@ library('evir')
 #struct.start.parameter....start parameter vector for ls-optimization (see par - optim)
 #OPTIONAL:
 #type  .........diag/fit; std=fit; if type is diag no fit is performed - only the individual estimates are ploted
-#error.type ... if rel then relative errors are used for the ls-optimization
+#error.type ... if rel then relative errors are used, if wei the error is weighted with the mean, abs is standard for the ls-optimization
 #control.......  named-list for optim (see control - optim)
 #validity.fun .. name of function returning true, if parameter fulfill requirements, false otherwise
 pr<-function(x){
@@ -599,7 +599,7 @@ pr<-function(x){
   }
   
   #estimate parameters for each predictor level
-  ind.par.est = estimateParameters(x);
+  ind.par.est = suppressWarnings2(estimateParameters(x),"NaNs produced");
   
   
   #define variable for holding information
@@ -614,7 +614,7 @@ pr<-function(x){
   }
   
   #estimate structure parameter
-  struct.par.est = suppressWarnings2(estimateStructureParameter(x,ind.par.est),"NaNs produced");
+  struct.par.est = estimateStructureParameter(x,ind.par.est)
   val[["struct.par.opt.result"]]=struct.par.est;
   val[["struct.par.est"]]=struct.par.est$par;
   
@@ -625,7 +625,7 @@ pr<-function(x){
     no.iqr.areas=round(no.observations/20)
     val[["input"]][["quantiles"]]=1:(no.iqr.areas-1)/no.iqr.areas
   }
-  chi2=chi2.test(val);
+  chi2=chi2.test(val)
   val[["chi2.test"]]=chi2
   
   if(x[["sim"]]!=TRUE)
