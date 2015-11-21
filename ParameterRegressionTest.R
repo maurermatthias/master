@@ -146,13 +146,23 @@ gev3<-function(stress,parameter){
   return(((b-a)/(stress-a)-1)*c2)
 }
 
+gev[["type"]]="diag"
 gev.result=pr(gev)
 pr.parplot(gev.result)
 
 gev[["quantiles"]]=1:9/10
-v=pr.sim(gev, 0.5, 500)
+gev[["control"]]=list(maxit=1000)
+v=pr.sim(gev, 0.5, 5000)
 
 
+
+###diagnosis plot
+gev2=list();
+gev2[["distr"]]="norm"
+gev2[["xval"]]=shen1[,1]
+gev2[["yval"]]=shen1[,2]
+gev2[["type"]]="diag"
+gev2.result=pr(gev2)
 
 ###########################################################
 #Gamma

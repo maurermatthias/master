@@ -11,6 +11,7 @@ library('evir')
 #struct.fun...list of function names for modelling parameter structure (one name for each parameter)
 #struct.start.parameter....start parameter vector for ls-optimization (see par - optim)
 #OPTIONAL:
+#type  .........diag/fit; std=fit; if type is diag no fit is performed - only the individual estimates are ploted
 #error.type ... if rel then relative errors are used for the ls-optimization
 #control.......  named-list for optim (see control - optim)
 #validity.fun .. name of function returning true, if parameter fulfill requirements, false otherwise
@@ -390,15 +391,28 @@ pr<-function(x){
   allowedDistributions=c("norm","logn","gev","gamma");
   checkInput(x,allowedDistributions);
   
+  if(is.null(x[["type"]])){
+    x[["type"]]="fit";
+  }else{
+    if(x[["type"]]!="diag" && x[["type"]] !="fit"){
+      x[["type"]]="fit";
+    }
+  }
+  
   #estimate parameters for each predictor level
   ind.par.est = estimateParameters(x);
+  
   
   #define variable for holding information
   val = list();
   val[["input"]]=x;
   val[["ind.par.est"]]=ind.par.est;
   
-  
+  #plot and return in case of diagnosis plot
+  if(x[["type"]]=="diag"){
+    pr.parplot(val)
+    return(NULL);
+  }
   
   #estimate structure parameter
   struct.par.est = estimateStructureParameter(x,ind.par.est);
@@ -452,6 +466,7 @@ pr.parplot<-function(x){
   #plot the 2 parameter calculatet - x is the return value from pr 
   pr.parplot2<-function(x){
     input=x[["input"]];
+    type=input[["type"]]
     ind.par.est=x[["ind.par.est"]];
     struct.par.est=x[["struct.par.est"]];
     
@@ -464,20 +479,22 @@ pr.parplot<-function(x){
     x.lineTMP1=(0:1000)*(xmax-xmin)/1000+xmin
     x.lineTMP=c(x.lineTMP1,rev(x.lineTMP1));
     
-    parameter.fun.name = input[["struct.fun"]];
-    #fun1=match.fun(parameter.fun.name[1]);
-    #fun2=match.fun(parameter.fun.name[2]);
-    y.line1TMP=myapply(parameter.fun.name[1], x.lineTMP, struct.par.est);
-    y.line2TMP=myapply(parameter.fun.name[2], x.lineTMP, struct.par.est);
-    #y.line1TMP=fun1(x.lineTMP,struct.par.est);
-    #y.line2TMP=fun2(x.lineTMP,struct.par.est);
-    
-    boolv=(!is.na(y.line1TMP)) & (!is.na(y.line2TMP))
-    if(input[["distr"]]=="norm"  || input[["distr"]]=="logn")
-      boolv= boolv & ((y.line1TMP>=0) & ( y.line2TMP>=0));
-    x.line=part(x.lineTMP,boolv);
-    y.line1=part(y.line1TMP,boolv);
-    y.line2=part(y.line2TMP,boolv);
+    if(type=="fit"){
+      parameter.fun.name = input[["struct.fun"]];
+      #fun1=match.fun(parameter.fun.name[1]);
+      #fun2=match.fun(parameter.fun.name[2]);
+      y.line1TMP=myapply(parameter.fun.name[1], x.lineTMP, struct.par.est);
+      y.line2TMP=myapply(parameter.fun.name[2], x.lineTMP, struct.par.est);
+      #y.line1TMP=fun1(x.lineTMP,struct.par.est);
+      #y.line2TMP=fun2(x.lineTMP,struct.par.est);
+      
+      boolv=(!is.na(y.line1TMP)) & (!is.na(y.line2TMP))
+      if(input[["distr"]]=="norm"  || input[["distr"]]=="logn")
+        boolv= boolv & ((y.line1TMP>=0) & ( y.line2TMP>=0));
+      x.line=part(x.lineTMP,boolv);
+      y.line1=part(y.line1TMP,boolv);
+      y.line2=part(y.line2TMP,boolv);
+    }
     
     if(!is.null(ind.par.est[["parameter.name"]])){
       name1=ind.par.est[["parameter.name"]][1]
@@ -497,21 +514,24 @@ pr.parplot<-function(x){
     #plot first parameter
     par(fig=c(0,1,0.4,1), new=TRUE)
     plot(x.points,y.points1,xlab="",ylab=name1)
-    polygon(x.line,y.line1,border="red")
-    legend(x="topright", legend=c(paste("estimate ",name1, sep=""),paste("observation ",name1, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
-    
+    if(type=="fit"){
+      polygon(x.line,y.line1,border="red")
+      legend(x="topright", legend=c(paste("estimate ",name1, sep=""),paste("observation ",name1, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+    }
     
     #plot second parameter
     par(fig=c(0,1,0,0.6), new=TRUE)
     plot(x.points,y.points2,xlab="stress",ylab=name2)
-    polygon(x.line,y.line2,border="red")
-    legend(x="topright", legend=c(paste("estimate ",name2, sep=""),paste("observation ",name2, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
-    
+    if(type=="fit"){
+      polygon(x.line,y.line2,border="red")
+      legend(x="topright", legend=c(paste("estimate ",name2, sep=""),paste("observation ",name2, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+    }
   }
   
   #plot the 3 parameter calculatet - x is the return value from pr 
   pr.parplot3<-function(x){
     input=x[["input"]];
+    type=input[["type"]]
     ind.par.est=x[["ind.par.est"]];
     struct.par.est=x[["struct.par.est"]];
     
@@ -524,29 +544,31 @@ pr.parplot<-function(x){
     x.lineTMP1=(0:1000)*(xmax-xmin)/1000+xmin
     x.lineTMP=c(x.lineTMP1,rev(x.lineTMP1));
     
-    parameter.fun.name = input[["struct.fun"]];
-    #fun1=match.fun(parameter.fun.name[1]);
-    #fun2=match.fun(parameter.fun.name[2]);
-    y.line1TMP=myapply(parameter.fun.name[1], x.lineTMP, struct.par.est);
-    y.line2TMP=myapply(parameter.fun.name[2], x.lineTMP, struct.par.est);
-    y.line3TMP=myapply(parameter.fun.name[3], x.lineTMP, struct.par.est);
-    #y.line1TMP=fun1(x.lineTMP,struct.par.est);
-    #y.line2TMP=fun2(x.lineTMP,struct.par.est);
-    
-    
-    boolv = (!is.na(y.line1TMP)) & (!is.na(y.line2TMP)) & (!is.na(y.line3TMP))
-    if(input[["distr"]]=="gev")
-      boolv = boolv & ((y.line2TMP>=0) & ( y.line3TMP>=0))
-    
-    x.line=part(x.lineTMP,boolv);
-    y.line1=part(y.line1TMP,boolv);
-    y.line2=part(y.line2TMP,boolv);
-    y.line3=part(y.line3TMP,boolv);
-    
-    #x.line=x.lineTMP
-    #y.line1=y.line1TMP
-    #y.line2=y.line2TMP
-    #y.line3=y.line3TMP
+    if(type=="fit"){
+      parameter.fun.name = input[["struct.fun"]];
+      #fun1=match.fun(parameter.fun.name[1]);
+      #fun2=match.fun(parameter.fun.name[2]);
+      y.line1TMP=myapply(parameter.fun.name[1], x.lineTMP, struct.par.est);
+      y.line2TMP=myapply(parameter.fun.name[2], x.lineTMP, struct.par.est);
+      y.line3TMP=myapply(parameter.fun.name[3], x.lineTMP, struct.par.est);
+      #y.line1TMP=fun1(x.lineTMP,struct.par.est);
+      #y.line2TMP=fun2(x.lineTMP,struct.par.est);
+      
+      
+      boolv = (!is.na(y.line1TMP)) & (!is.na(y.line2TMP)) & (!is.na(y.line3TMP))
+      if(input[["distr"]]=="gev")
+        boolv = boolv & ((y.line2TMP>=0) & ( y.line3TMP>=0))
+      
+      x.line=part(x.lineTMP,boolv);
+      y.line1=part(y.line1TMP,boolv);
+      y.line2=part(y.line2TMP,boolv);
+      y.line3=part(y.line3TMP,boolv);
+      
+      #x.line=x.lineTMP
+      #y.line1=y.line1TMP
+      #y.line2=y.line2TMP
+      #y.line3=y.line3TMP
+    }
     
     if(!is.null(ind.par.est[["parameter.name"]])){
       name1=ind.par.est[["parameter.name"]][1]
@@ -565,22 +587,26 @@ pr.parplot<-function(x){
     #plot first parameter
     par(fig=c(0,1,1-2*d,1), new=TRUE)
     plot(x.points,y.points1,xlab="",ylab=name1)
-    polygon(x.line,y.line1,border="red")
-    legend(x="topright", legend=c(paste("estimate ", name1, sep=""),paste("observation ", name1, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
-    
+    if(type=="fit"){
+      polygon(x.line,y.line1,border="red")
+      legend(x="topright", legend=c(paste("estimate ", name1, sep=""),paste("observation ", name1, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+    }
     
     #plot second parameter
     par(fig=c(0,1,0.5-d,0.5+d), new=TRUE)
     plot(x.points,y.points2,xlab="",ylab=name2)
-    polygon(x.line,y.line2,border="red")
-    legend(x="topright", legend=c(paste("estimate ", name2, sep=""),paste("observation ", name2, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+    if(type=="fit"){
+      polygon(x.line,y.line2,border="red")
+      legend(x="topright", legend=c(paste("estimate ", name2, sep=""),paste("observation ", name2, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+    }
     
     #plot third parameter
     par(fig=c(0,1,0,2*d), new=TRUE)
     plot(x.points,y.points3,xlab="stress",ylab=name3)
-    polygon(x.line,y.line3,border="red")
-    legend(x="topright", legend=c(paste("estimate ", name3, sep=""),paste("observation ", name3, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
-    
+    if(type=="fit"){
+      polygon(x.line,y.line3,border="red")
+      legend(x="topright", legend=c(paste("estimate ", name3, sep=""),paste("observation ", name3, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+    }
   }
   
   
@@ -700,11 +726,63 @@ pr.sim<-function(input, ratio, times){
   #creates random bool matrix
   create.rand.boolmatrix<-function(input, ratio, times){
     x=input[["xval"]]
-    y=input[["yval"]]
     stress=unique(x)
     no.lines=length(x)
     ratio.new=round(ratio*length(x))
-    t(replicate(length(input[["xval"]]),rnorm(times))<=0.85)
+    #warning("Random observation generation not implemented properly just yet");
+    #return(t(replicate(length(input[["xval"]]),rnorm(times))<=0.85))
+    max.times=1;
+    for(gr in 1:length(stress)){
+      gr.len=sum(stress[gr]==x)
+      gr.ratio=round((1-ratio)*gr.len) 
+      max.times=max.times*choose(gr.len,gr.ratio)
+    }
+    if(max.times<times)
+      stop(paste("number of simulation too big for this datasample"));
+    vectors=list()
+    old.percentage=0;
+    for(col in 1:times){
+      if(round(100*col/times) != old.percentage){
+        old.percentage=round(100*col/times)
+        msg=paste("creating simulation matrix - ",as.character(old.percentage),"% done.", sep="")
+        status.update(msg);
+      }
+      #do-while loop
+      repeat{
+        bool.vec=c()
+        for(gr in 1:length(stress)){
+          gr.len=sum(stress[gr]==x)
+          gr.ratio=round((1-ratio)*gr.len) #number of FALSE
+          if(gr.ratio<=0 || gr.ratio>=gr.len)
+            stop("ratio too small or too large - need to be between 1 and 0 and be adjusted to the group size!");
+          tmp.vec=rep(TRUE,gr.len)
+          pos.to.change=sample(1:gr.len,gr.ratio)
+          for(i in 1:length(pos.to.change)){
+            tmp.vec[pos.to.change]=FALSE
+          }
+          bool.vec=c(bool.vec,tmp.vec)
+        }
+        stop.rep=TRUE
+        if(length(vectors)!=0){
+          for(i in 1:length(vectors)){
+            if(sum(bool.vec==vectors[[i]])==length(bool.vec)){
+              stop.rep=FALSE
+            }
+          }
+        }
+        if(stop.rep){
+          break
+        }
+      }
+      vectors[[col]]=bool.vec
+    }
+    #warning("no check for multiple appereance of the same vector");
+    mat=c()
+    for(i in 1:times){
+      mat=c(mat,vectors[[i]])
+    }
+    return(matrix(mat,nrow=no.lines,byrow=FALSE))
+    
   }
   
   #one simulation step 
@@ -765,23 +843,38 @@ pr.sim<-function(input, ratio, times){
   }
   
   
+  get.time<-function(sec){
+    if(sec<60){
+      return(paste(as.character(sec),"[s]",sep=""))
+    }else{
+      n.min=sec%/%60
+      n.sec=as.character(sec-n.min*60)
+      if(nchar(n.sec)==1)
+        n.sec=paste("0",n.sec,sep="")
+      return(paste(as.character(n.min),"[m] ",n.sec,"[s]",sep=""))
+    }
+  }
+  
+  
   ###########################################################################
   #pr.sim functionality start
   if(is.null(input[["quantiles"]]))
     stop("Quantiles are needed for this approach!")
   input[["sim"]]=TRUE
   p.val=c()
-  start.time = proc.time()[["elapsed"]]
   display.steps=0.1
+  status.update("creating simulation matrix");
   bool.m=create.rand.boolmatrix(input, ratio, times)
   status.update("start calculation");
+  start.time = proc.time()[["elapsed"]]
   old.val=-1;
   for(c in 1:times){
     if(TRUE || (c/times)%%0.1==0){
       val=round(100*(c/times))
       if(old.val != val){
         old.val=val;
-        msg = paste("Calculated ",as.character(val),"% in ",as.character(round(proc.time()[["elapsed"]]-start.time)),"[s].",sep="");
+        time.string=get.time(round(proc.time()[["elapsed"]]-start.time))
+        msg = paste("Calculated ",as.character(val),"% in ",time.string ,". Abort with ESC.",sep="");
         status.update(msg);
       }
     }
@@ -791,7 +884,7 @@ pr.sim<-function(input, ratio, times){
       p.val=c(p.val,p.val.tmp)
       }, silent=TRUE)
   }
-  msg=paste("Simulation done in ",as.character(round(proc.time()[["elapsed"]]-start.time)),"[s] with ",as.character(round(100*length(p.val)/times)),"% success rate.",sep="");
+  msg=paste("Simulation done in ",get.time(round(proc.time()[["elapsed"]]-start.time))," with ",as.character(round(100*length(p.val)/times)),"% success rate.",sep="");
   status.update(msg);
   par(mfrow=c(2,1))
   print.edf(p.val)
