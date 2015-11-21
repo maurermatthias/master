@@ -37,6 +37,15 @@ pr<-function(x){
     ret
   }
   
+  #supress only special warning
+  suppressWarnings2<-function(expr, regex=character()){
+    withCallingHandlers(expr, warning=function(w) {
+      if (length(regex) == 1 && length(grep(regex, conditionMessage(w)))) {
+        invokeRestart("muffleWarning")
+      }
+    })
+  } 
+  
   #evaluates function with name "fun" at each point in vector xval and parameter par 
   myapply<-function(fun,xval,par){
     func=match.fun(fun);
@@ -382,6 +391,193 @@ pr<-function(x){
     return(df);
   }
   
+  #plot the parameter calculatet - x is the return value from pr
+  pr.parplot<-function(x){
+    ############################################################################
+    #pr.parplot needed functions
+    
+    #takes two vektors of the same size, returns those elements of vector
+    #one where vector two contains true
+    part<-function(data,bool)
+    {
+      if(length(bool)!=length(data))
+        stop("vectors need to be of the same size!") 
+      ret=c()
+      for(i in 1:length(bool))
+        if(bool[i])
+          ret[length(ret)+1]=data[i]
+      ret
+    }
+    
+    #evaluates function with name "fun" at each point in vector xval and parameter par 
+    myapply<-function(fun,xval,par){
+      func=match.fun(fun);
+      val=c()
+      for(i in 1:length(xval)){
+        val=c(val,func(xval[i],par));
+      }
+      return(val)
+    }
+    
+    #####################PLOT
+    #plot the 2 parameter calculatet - x is the return value from pr 
+    pr.parplot2<-function(x){
+      input=x[["input"]];
+      type=input[["type"]]
+      ind.par.est=x[["ind.par.est"]];
+      struct.par.est=x[["struct.par.est"]];
+      
+      x.points=ind.par.est[["predictorlevels"]]
+      y.points1=ind.par.est[["p"]][1,]
+      y.points2=ind.par.est[["p"]][2,]
+      #xmin=max(min(input[["xval"]])*0.9,struct.par.est[1]+0.0000001);
+      xmin=min(input[["xval"]])*0.9;
+      xmax=max(input[["xval"]])*1.1
+      x.lineTMP1=(0:1000)*(xmax-xmin)/1000+xmin
+      x.lineTMP=c(x.lineTMP1,rev(x.lineTMP1));
+      
+      if(type=="fit"){
+        parameter.fun.name = input[["struct.fun"]];
+        #fun1=match.fun(parameter.fun.name[1]);
+        #fun2=match.fun(parameter.fun.name[2]);
+        y.line1TMP=myapply(parameter.fun.name[1], x.lineTMP, struct.par.est);
+        y.line2TMP=myapply(parameter.fun.name[2], x.lineTMP, struct.par.est);
+        #y.line1TMP=fun1(x.lineTMP,struct.par.est);
+        #y.line2TMP=fun2(x.lineTMP,struct.par.est);
+        
+        boolv=(!is.na(y.line1TMP)) & (!is.na(y.line2TMP))
+        if(input[["distr"]]=="norm"  || input[["distr"]]=="logn")
+          boolv= boolv & ((y.line1TMP>=0) & ( y.line2TMP>=0));
+        x.line=part(x.lineTMP,boolv);
+        y.line1=part(y.line1TMP,boolv);
+        y.line2=part(y.line2TMP,boolv);
+      }
+      
+      if(!is.null(ind.par.est[["parameter.name"]])){
+        name1=ind.par.est[["parameter.name"]][1]
+        name2=ind.par.est[["parameter.name"]][2]
+      }else{
+        name1="parameter1";
+        name2="parameter2";
+      }
+      
+      #x.line=x.lineTMP
+      #y.line1=y.line1TMP
+      #y.line2=y.line2TMP
+      
+      #create new plot
+      plot.new()
+      
+      #plot first parameter
+      par(fig=c(0,1,0.4,1), new=TRUE)
+      plot(x.points,y.points1,xlab="",ylab=name1)
+      if(type=="fit"){
+        polygon(x.line,y.line1,border="red")
+        legend(x="topright", legend=c(paste("estimate ",name1, sep=""),paste("observation ",name1, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+      }
+      
+      #plot second parameter
+      par(fig=c(0,1,0,0.6), new=TRUE)
+      plot(x.points,y.points2,xlab="stress",ylab=name2)
+      if(type=="fit"){
+        polygon(x.line,y.line2,border="red")
+        legend(x="topright", legend=c(paste("estimate ",name2, sep=""),paste("observation ",name2, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+      }
+    }
+    
+    #plot the 3 parameter calculatet - x is the return value from pr 
+    pr.parplot3<-function(x){
+      input=x[["input"]];
+      type=input[["type"]]
+      ind.par.est=x[["ind.par.est"]];
+      struct.par.est=x[["struct.par.est"]];
+      
+      x.points=ind.par.est[["predictorlevels"]]
+      y.points1=ind.par.est[["p"]][1,]
+      y.points2=ind.par.est[["p"]][2,]
+      y.points3=ind.par.est[["p"]][3,]
+      xmin=min(input[["xval"]])*0.9;
+      xmax=max(input[["xval"]])*1.1
+      x.lineTMP1=(0:1000)*(xmax-xmin)/1000+xmin
+      x.lineTMP=c(x.lineTMP1,rev(x.lineTMP1));
+      
+      if(type=="fit"){
+        parameter.fun.name = input[["struct.fun"]];
+        #fun1=match.fun(parameter.fun.name[1]);
+        #fun2=match.fun(parameter.fun.name[2]);
+        y.line1TMP=myapply(parameter.fun.name[1], x.lineTMP, struct.par.est);
+        y.line2TMP=myapply(parameter.fun.name[2], x.lineTMP, struct.par.est);
+        y.line3TMP=myapply(parameter.fun.name[3], x.lineTMP, struct.par.est);
+        #y.line1TMP=fun1(x.lineTMP,struct.par.est);
+        #y.line2TMP=fun2(x.lineTMP,struct.par.est);
+        
+        
+        boolv = (!is.na(y.line1TMP)) & (!is.na(y.line2TMP)) & (!is.na(y.line3TMP))
+        if(input[["distr"]]=="gev")
+          boolv = boolv & ((y.line2TMP>=0) & ( y.line3TMP>=0))
+        
+        x.line=part(x.lineTMP,boolv);
+        y.line1=part(y.line1TMP,boolv);
+        y.line2=part(y.line2TMP,boolv);
+        y.line3=part(y.line3TMP,boolv);
+        
+        #x.line=x.lineTMP
+        #y.line1=y.line1TMP
+        #y.line2=y.line2TMP
+        #y.line3=y.line3TMP
+      }
+      
+      if(!is.null(ind.par.est[["parameter.name"]])){
+        name1=ind.par.est[["parameter.name"]][1]
+        name2=ind.par.est[["parameter.name"]][2]
+        name3=ind.par.est[["parameter.name"]][3]
+      }else{
+        name1="parameter1";
+        name2="parameter2";
+        name3="parameter3";
+      }
+      
+      #create new plot
+      plot.new()
+      d=0.225
+      
+      #plot first parameter
+      par(fig=c(0,1,1-2*d,1), new=TRUE)
+      plot(x.points,y.points1,xlab="",ylab=name1)
+      if(type=="fit"){
+        polygon(x.line,y.line1,border="red")
+        legend(x="topright", legend=c(paste("estimate ", name1, sep=""),paste("observation ", name1, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+      }
+      
+      #plot second parameter
+      par(fig=c(0,1,0.5-d,0.5+d), new=TRUE)
+      plot(x.points,y.points2,xlab="",ylab=name2)
+      if(type=="fit"){
+        polygon(x.line,y.line2,border="red")
+        legend(x="topright", legend=c(paste("estimate ", name2, sep=""),paste("observation ", name2, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+      }
+      
+      #plot third parameter
+      par(fig=c(0,1,0,2*d), new=TRUE)
+      plot(x.points,y.points3,xlab="stress",ylab=name3)
+      if(type=="fit"){
+        polygon(x.line,y.line3,border="red")
+        legend(x="topright", legend=c(paste("estimate ", name3, sep=""),paste("observation ", name3, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+      }
+    }
+    
+    
+    ############################################################################
+    #functionality pr.parplot start
+    if(x[["ind.par.est"]][["numberOfParameters"]]==2){
+      pr.parplot2(x);
+    }else if(x[["ind.par.est"]][["numberOfParameters"]]==3){
+      pr.parplot3(x);
+    }else{
+      stop("Printing of parameter only implemented for two and three parameters!");
+    }
+  }
+  
   
   ########################################################################################
   ########################################################################################
@@ -390,6 +586,9 @@ pr<-function(x){
   #check the input
   allowedDistributions=c("norm","logn","gev","gamma");
   checkInput(x,allowedDistributions);
+  
+  if(is.null(x[["sim"]]))
+    x[["sim"]]=FALSE
   
   if(is.null(x[["type"]])){
     x[["type"]]="fit";
@@ -415,7 +614,7 @@ pr<-function(x){
   }
   
   #estimate structure parameter
-  struct.par.est = estimateStructureParameter(x,ind.par.est);
+  struct.par.est = suppressWarnings2(estimateStructureParameter(x,ind.par.est),"NaNs produced");
   val[["struct.par.opt.result"]]=struct.par.est;
   val[["struct.par.est"]]=struct.par.est$par;
   
@@ -428,197 +627,11 @@ pr<-function(x){
   }
   chi2=chi2.test(val);
   val[["chi2.test"]]=chi2
-
+  
+  if(x[["sim"]]!=TRUE)
+    pr.parplot(val)
   
   return(val);
-}
-
-
-#plot the parameter calculatet - x is the return value from pr
-pr.parplot<-function(x){
-  ############################################################################
-  #pr.parplot needed functions
-  
-  #takes two vektors of the same size, returns those elements of vector
-  #one where vector two contains true
-  part<-function(data,bool)
-  {
-    if(length(bool)!=length(data))
-      stop("vectors need to be of the same size!") 
-    ret=c()
-    for(i in 1:length(bool))
-      if(bool[i])
-        ret[length(ret)+1]=data[i]
-    ret
-  }
-  
-  #evaluates function with name "fun" at each point in vector xval and parameter par 
-  myapply<-function(fun,xval,par){
-    func=match.fun(fun);
-    val=c()
-    for(i in 1:length(xval)){
-      val=c(val,func(xval[i],par));
-    }
-    return(val)
-  }
-  
-  #####################PLOT
-  #plot the 2 parameter calculatet - x is the return value from pr 
-  pr.parplot2<-function(x){
-    input=x[["input"]];
-    type=input[["type"]]
-    ind.par.est=x[["ind.par.est"]];
-    struct.par.est=x[["struct.par.est"]];
-    
-    x.points=ind.par.est[["predictorlevels"]]
-    y.points1=ind.par.est[["p"]][1,]
-    y.points2=ind.par.est[["p"]][2,]
-    #xmin=max(min(input[["xval"]])*0.9,struct.par.est[1]+0.0000001);
-    xmin=min(input[["xval"]])*0.9;
-    xmax=max(input[["xval"]])*1.1
-    x.lineTMP1=(0:1000)*(xmax-xmin)/1000+xmin
-    x.lineTMP=c(x.lineTMP1,rev(x.lineTMP1));
-    
-    if(type=="fit"){
-      parameter.fun.name = input[["struct.fun"]];
-      #fun1=match.fun(parameter.fun.name[1]);
-      #fun2=match.fun(parameter.fun.name[2]);
-      y.line1TMP=myapply(parameter.fun.name[1], x.lineTMP, struct.par.est);
-      y.line2TMP=myapply(parameter.fun.name[2], x.lineTMP, struct.par.est);
-      #y.line1TMP=fun1(x.lineTMP,struct.par.est);
-      #y.line2TMP=fun2(x.lineTMP,struct.par.est);
-      
-      boolv=(!is.na(y.line1TMP)) & (!is.na(y.line2TMP))
-      if(input[["distr"]]=="norm"  || input[["distr"]]=="logn")
-        boolv= boolv & ((y.line1TMP>=0) & ( y.line2TMP>=0));
-      x.line=part(x.lineTMP,boolv);
-      y.line1=part(y.line1TMP,boolv);
-      y.line2=part(y.line2TMP,boolv);
-    }
-    
-    if(!is.null(ind.par.est[["parameter.name"]])){
-      name1=ind.par.est[["parameter.name"]][1]
-      name2=ind.par.est[["parameter.name"]][2]
-    }else{
-      name1="parameter1";
-      name2="parameter2";
-    }
-    
-    #x.line=x.lineTMP
-    #y.line1=y.line1TMP
-    #y.line2=y.line2TMP
-    
-    #create new plot
-    plot.new()
-    
-    #plot first parameter
-    par(fig=c(0,1,0.4,1), new=TRUE)
-    plot(x.points,y.points1,xlab="",ylab=name1)
-    if(type=="fit"){
-      polygon(x.line,y.line1,border="red")
-      legend(x="topright", legend=c(paste("estimate ",name1, sep=""),paste("observation ",name1, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
-    }
-    
-    #plot second parameter
-    par(fig=c(0,1,0,0.6), new=TRUE)
-    plot(x.points,y.points2,xlab="stress",ylab=name2)
-    if(type=="fit"){
-      polygon(x.line,y.line2,border="red")
-      legend(x="topright", legend=c(paste("estimate ",name2, sep=""),paste("observation ",name2, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
-    }
-  }
-  
-  #plot the 3 parameter calculatet - x is the return value from pr 
-  pr.parplot3<-function(x){
-    input=x[["input"]];
-    type=input[["type"]]
-    ind.par.est=x[["ind.par.est"]];
-    struct.par.est=x[["struct.par.est"]];
-    
-    x.points=ind.par.est[["predictorlevels"]]
-    y.points1=ind.par.est[["p"]][1,]
-    y.points2=ind.par.est[["p"]][2,]
-    y.points3=ind.par.est[["p"]][3,]
-    xmin=min(input[["xval"]])*0.9;
-    xmax=max(input[["xval"]])*1.1
-    x.lineTMP1=(0:1000)*(xmax-xmin)/1000+xmin
-    x.lineTMP=c(x.lineTMP1,rev(x.lineTMP1));
-    
-    if(type=="fit"){
-      parameter.fun.name = input[["struct.fun"]];
-      #fun1=match.fun(parameter.fun.name[1]);
-      #fun2=match.fun(parameter.fun.name[2]);
-      y.line1TMP=myapply(parameter.fun.name[1], x.lineTMP, struct.par.est);
-      y.line2TMP=myapply(parameter.fun.name[2], x.lineTMP, struct.par.est);
-      y.line3TMP=myapply(parameter.fun.name[3], x.lineTMP, struct.par.est);
-      #y.line1TMP=fun1(x.lineTMP,struct.par.est);
-      #y.line2TMP=fun2(x.lineTMP,struct.par.est);
-      
-      
-      boolv = (!is.na(y.line1TMP)) & (!is.na(y.line2TMP)) & (!is.na(y.line3TMP))
-      if(input[["distr"]]=="gev")
-        boolv = boolv & ((y.line2TMP>=0) & ( y.line3TMP>=0))
-      
-      x.line=part(x.lineTMP,boolv);
-      y.line1=part(y.line1TMP,boolv);
-      y.line2=part(y.line2TMP,boolv);
-      y.line3=part(y.line3TMP,boolv);
-      
-      #x.line=x.lineTMP
-      #y.line1=y.line1TMP
-      #y.line2=y.line2TMP
-      #y.line3=y.line3TMP
-    }
-    
-    if(!is.null(ind.par.est[["parameter.name"]])){
-      name1=ind.par.est[["parameter.name"]][1]
-      name2=ind.par.est[["parameter.name"]][2]
-      name3=ind.par.est[["parameter.name"]][3]
-    }else{
-      name1="parameter1";
-      name2="parameter2";
-      name3="parameter3";
-    }
-    
-    #create new plot
-    plot.new()
-    d=0.225
-    
-    #plot first parameter
-    par(fig=c(0,1,1-2*d,1), new=TRUE)
-    plot(x.points,y.points1,xlab="",ylab=name1)
-    if(type=="fit"){
-      polygon(x.line,y.line1,border="red")
-      legend(x="topright", legend=c(paste("estimate ", name1, sep=""),paste("observation ", name1, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
-    }
-    
-    #plot second parameter
-    par(fig=c(0,1,0.5-d,0.5+d), new=TRUE)
-    plot(x.points,y.points2,xlab="",ylab=name2)
-    if(type=="fit"){
-      polygon(x.line,y.line2,border="red")
-      legend(x="topright", legend=c(paste("estimate ", name2, sep=""),paste("observation ", name2, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
-    }
-    
-    #plot third parameter
-    par(fig=c(0,1,0,2*d), new=TRUE)
-    plot(x.points,y.points3,xlab="stress",ylab=name3)
-    if(type=="fit"){
-      polygon(x.line,y.line3,border="red")
-      legend(x="topright", legend=c(paste("estimate ", name3, sep=""),paste("observation ", name3, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
-    }
-  }
-  
-  
-  ############################################################################
-  #functionality pr.parplot start
-  if(x[["ind.par.est"]][["numberOfParameters"]]==2){
-    pr.parplot2(x);
-  }else if(x[["ind.par.est"]][["numberOfParameters"]]==3){
-    pr.parplot3(x);
-  }else{
-    stop("Printing of parameter only implemented for two and three parameters!");
-  }
 }
 
 
@@ -709,19 +722,7 @@ pr.sim<-function(input, ratio, times){
       if(bool[i])
         ret[length(ret)+1]=data[i]
     ret
-  }
-  
-  
-  #supress only special warning
-  suppressWarnings2<-function(expr, regex=character()){
-    withCallingHandlers(expr, warning=function(w) {
-      if (length(regex) == 1 && length(grep(regex, conditionMessage(w)))) {
-        invokeRestart("muffleWarning")
-      }
-    })
   } 
-  
-  
   
   #creates random bool matrix
   create.rand.boolmatrix<-function(input, ratio, times){
@@ -744,7 +745,7 @@ pr.sim<-function(input, ratio, times){
     for(col in 1:times){
       if(round(100*col/times) != old.percentage){
         old.percentage=round(100*col/times)
-        msg=paste("creating simulation matrix - ",as.character(old.percentage),"% done.", sep="")
+        msg=paste("creating simulation matrix - ",as.character(old.percentage),"% done. Abort with ESC.", sep="")
         status.update(msg);
       }
       #do-while loop
@@ -797,7 +798,7 @@ pr.sim<-function(input, ratio, times){
     input.new=input
     input.new[["xval"]]=x.fit
     input.new[["yval"]]=y.fit
-    result=suppressWarnings2(pr(input.new),"NaNs produced")
+    result=pr(input.new)
     #evaluation
     quantile.numbers=getQuantileNumbers(x.eval,y.eval,input[["quantiles"]],result$chi2.test[["quantile.values"]]);
     chi2.value=getChi2Value(input[["quantiles"]],quantile.numbers)
@@ -808,9 +809,9 @@ pr.sim<-function(input, ratio, times){
   }
 
   status.update<-function(string){
-    cat("                          ", " \r")
+    cat("                                                                           ", " \r")
     flush.console();
-    cat(string, " \r")
+    cat(paste(string,"                                                "), " \r")
     flush.console();
   }
   
@@ -841,6 +842,15 @@ pr.sim<-function(input, ratio, times){
       points(x.new,y.new,col="red",pch=20)
     
   }
+  
+  #supress only special warning
+  suppressWarnings2<-function(expr, regex=character()){
+    withCallingHandlers(expr, warning=function(w) {
+      if (length(regex) == 1 && length(grep(regex, conditionMessage(w)))) {
+        invokeRestart("muffleWarning")
+      }
+    })
+  } 
   
   
   get.time<-function(sec){
@@ -882,7 +892,7 @@ pr.sim<-function(input, ratio, times){
     }
     bool=bool.m[,c]
     try({
-      p.val.tmp = sim(bool,input);
+      p.val.tmp = suppressWarnings2(sim(bool,input),"NaNs produced");
       p.val=c(p.val,p.val.tmp)
       }, silent=TRUE)
   }

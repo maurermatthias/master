@@ -49,7 +49,6 @@ norm2<-function(stress,parameter){
 }
 
 norm.result=pr(norm)
-pr.parplot(norm.result)
 
 
 
@@ -94,7 +93,6 @@ logn2<-function(stress,parameter){
 }
 
 logn.result=pr(logn)
-pr.parplot(logn.result)
 
 
 #################################################################################
@@ -116,7 +114,7 @@ val.gev<-function(stress,parameter){
   b=parameter[3];
   c1=parameter[4];
   c2=parameter[5];
-  if(b<=max(stress) || a>=min(stress) || c1<=0 || c2<=0 || k==0){
+  if(b<=max(stress) || a>=min(stress) || c1<=0 || c2<=0 || k==0 || min(gev2(stress,parameter))<=0 ){
     return(FALSE);
   }else{
     return(TRUE);
@@ -148,21 +146,20 @@ gev3<-function(stress,parameter){
 
 
 gev.result=pr(gev)
-pr.parplot(gev.result)
 
 gev[["quantiles"]]=1:9/10
 gev[["control"]]=list(maxit=1000)
-v=pr.sim(gev, 0.5, 5000)
+v=pr.sim(gev, 0.5, 50)
 
 
 
 ###diagnosis plot
-gev2=list();
-gev2[["distr"]]="norm"
-gev2[["xval"]]=shen1[,1]
-gev2[["yval"]]=shen1[,2]
-gev2[["type"]]="diag"
-gev2.result=pr(gev2)
+gev.2=list();
+gev.2[["distr"]]="norm"
+gev.2[["xval"]]=shen1[,1]
+gev.2[["yval"]]=shen1[,2]
+gev.2[["type"]]="diag"
+gev.2.result=pr(gev.2)
 
 ###########################################################
 #Gamma
@@ -211,4 +208,3 @@ gam2<-function(stress,parameter){
 
 
 gam.result=pr(gam)
-pr.parplot(gam.result)
