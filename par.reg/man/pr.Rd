@@ -92,6 +92,7 @@ val.gev<-function(stress,parameter){
 }
 
 
+#define parameter-regression function, dependendt on structure parameter 
 #xi gev-distibution
 gev1<-function(stress,parameter){
   k=parameter[1];

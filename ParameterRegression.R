@@ -1,6 +1,5 @@
 #source('function.R')
-library('stats')
-library('evir')
+
 
 ###################################################################
 #function gets a named list
@@ -16,6 +15,8 @@ library('evir')
 #control.......  named-list for optim (see control - optim)
 #validity.fun .. name of function returning true, if parameter fulfill requirements, false otherwise
 pr<-function(x){
+  library('stats')
+  library('evir')
   
   ###################################################################
   ###################################################################
@@ -539,10 +540,10 @@ pr<-function(x){
       
       #create new plot
       plot.new()
-      d=0.225
+      #d=0.225
       
       #plot first parameter
-      par(fig=c(0,1,1-2*d,1), new=TRUE)
+      par(fig=c(0,1,1-2*0.225,1), new=TRUE)
       plot(x.points,y.points1,xlab="",ylab=name1)
       if(type=="fit"){
         polygon(x.line,y.line1,border="red")
@@ -550,7 +551,7 @@ pr<-function(x){
       }
       
       #plot second parameter
-      par(fig=c(0,1,0.5-d,0.5+d), new=TRUE)
+      par(fig=c(0,1,0.5-0.225,0.5+d), new=TRUE)
       plot(x.points,y.points2,xlab="",ylab=name2)
       if(type=="fit"){
         polygon(x.line,y.line2,border="red")
@@ -558,7 +559,7 @@ pr<-function(x){
       }
       
       #plot third parameter
-      par(fig=c(0,1,0,2*d), new=TRUE)
+      par(fig=c(0,1,0,2*0.225), new=TRUE)
       plot(x.points,y.points3,xlab="stress",ylab=name3)
       if(type=="fit"){
         polygon(x.line,y.line3,border="red")
