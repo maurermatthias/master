@@ -643,7 +643,7 @@ pr<-function(x){
 #input....input list like for pr()
 #ratio....p.u. (0<ratio<1) amount of observations per stress level used for fitting
 #times...number of times evaluation is done
-pr.sim<-function(input, ratio, times){
+pr.sim<-function(input, ratio, times, sim=NULL){
   ############################################################################
   #needed function for pr.sim
   
@@ -790,7 +790,7 @@ pr.sim<-function(input, ratio, times){
   #input ... input list like for pr()
   #bool ... boolvector of size length(input[["xval"]]) - specifies which values are takern for fitting (TRUE)
   #         and which ones are taking for evaluation (FALSE)
-  sim<-function(bool,input){
+  simul<-function(bool,input){
     x.fit=part(input[["xval"]],bool)
     y.fit=part(input[["yval"]],bool)
     x.eval=part(input[["xval"]],bool==FALSE)
@@ -865,44 +865,60 @@ pr.sim<-function(input, ratio, times){
     }
   }
   
+  #performes simulation in case an observation is given
+  simulation.observation<-function(input,ratio,times){ 
+    input[["type"]]="fit"
+    
+    if(is.null(input[["quantiles"]]))
+      stop("Quantiles are needed for this approach!")
+    input[["sim"]]=TRUE
+    p.val=c()
+    display.steps=0.1
+    status.update("creating simulation matrix");
+    bool.m=create.rand.boolmatrix(input, ratio, times)
+    status.update("start calculation");
+    start.time = proc.time()[["elapsed"]]
+    old.val=-1;
+    for(c in 1:times){
+      if(TRUE || (c/times)%%0.1==0){
+        val=round(100*(c/times))
+        if(old.val != val){
+          old.val=val;
+          time.string=get.time(round(proc.time()[["elapsed"]]-start.time))
+          msg = paste("Calculated ",as.character(val),"% in ",time.string ,". Abort with ESC.",sep="");
+          status.update(msg);
+        }
+      }
+      bool=bool.m[,c]
+      try({
+        p.val.tmp = suppressWarnings2(simul(bool,input),"NaNs produced");
+        p.val=c(p.val,p.val.tmp)
+      }, silent=TRUE)
+    }
+    msg=paste("Simulation done in ",get.time(round(proc.time()[["elapsed"]]-start.time))," with ",as.character(round(100*length(p.val)/times)),"% success rate.",sep="");
+    status.update(msg);
+    par(mfrow=c(2,1))
+    print.edf(p.val)
+    hist(p.val,main="")
+    par(mfrow=c(1,1))
+    return(p.val)
+  }
+  
   
   ###########################################################################
   #pr.sim functionality start
-  input[["type"]]="fit"
-  
-  if(is.null(input[["quantiles"]]))
-    stop("Quantiles are needed for this approach!")
-  input[["sim"]]=TRUE
-  p.val=c()
-  display.steps=0.1
-  status.update("creating simulation matrix");
-  bool.m=create.rand.boolmatrix(input, ratio, times)
-  status.update("start calculation");
-  start.time = proc.time()[["elapsed"]]
-  old.val=-1;
-  for(c in 1:times){
-    if(TRUE || (c/times)%%0.1==0){
-      val=round(100*(c/times))
-      if(old.val != val){
-        old.val=val;
-        time.string=get.time(round(proc.time()[["elapsed"]]-start.time))
-        msg = paste("Calculated ",as.character(val),"% in ",time.string ,". Abort with ESC.",sep="");
-        status.update(msg);
-      }
-    }
-    bool=bool.m[,c]
-    try({
-      p.val.tmp = suppressWarnings2(sim(bool,input),"NaNs produced");
-      p.val=c(p.val,p.val.tmp)
-      }, silent=TRUE)
+  if(is.null(sim)){
+    return(simulation.observation(input,ratio,times))
+  }else{
+    if(is.null(sim[["dist"]]))
+      stop("A distribution (sim[[\"dist\"]]) has to be defined for generating a sample!");
+    if(is.null(sim[["xval"]]))
+      stop("Predictor-vector (sim[[\"xval\"]]) values for the sample must be defined!");
+    if(is.null(sim[["n"]]))
+      stop("A vector (sim[[\"n\"]]) must be defined specifying the number of observation at the predictor values!");
+    return(NULL);
   }
-  msg=paste("Simulation done in ",get.time(round(proc.time()[["elapsed"]]-start.time))," with ",as.character(round(100*length(p.val)/times)),"% success rate.",sep="");
-  status.update(msg);
-  par(mfrow=c(2,1))
-  print.edf(p.val)
-  hist(p.val,main="")#
-  par(mfrow=c(1,1))
-  return(p.val)
+
 }
 
 #load example dataset
