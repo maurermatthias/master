@@ -2,10 +2,10 @@
 \alias{pr}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{ 
-Least-Square Parameter Regression for fatigue data
+Parameter Regression for fatigue data
 }
-\description{ description test
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+\description{ 
+Does either a LS- or ML-fit for user-spezified parameter-function.
 }
 \usage{
 pr(x)
@@ -13,20 +13,21 @@ pr(x)
 %- maybe also 'usage' for other objects documented here.
 \arguments{ 
 The function takes one argument "x", a named list with the following members:
-  \item{distr}{Distribution of the observations, element out of \{norm, lnorm, gamma, gev\} for normal-,lognormal-, gamma- and extreme-value-distribution.}
-  \item{xval}{Predictor values (stress-level) as vector.}
-  \item{yval}{Observation values (circles to failure) as vector.}
-  \item{struct.fun}{List of names for parameter functions (one name for each parameter).}
-  \item{struct.start.parameter}{Start parameter vector for Least-Square optimization (see par - optim).}
+  \item{x$distr}{Distribution of the observations, element out of \{norm, lnorm, gamma, gev\} for normal-,lognormal-, gamma- and extreme-value-distribution.}
+  \item{x$xval}{Predictor values (stress-level) as vector.}
+  \item{x$yval}{Observation values (circles to failure) as vector.}
+  \item{x$ML}{If TRUE a ML-fit instead of a LS-fit is done.}
+  \item{x$struct.fun}{List of names for parameter functions (one name for each parameter).}
+  \item{x$struct.start.parameter}{Start parameter vector for Least-Square optimization (see par - optim).}
   
   
-  \item{type (optional)}{Has values in \{fit (default),diag\}. If type has value diag no fit is performed - only the individual estimates are ploted to help deciding on the parameter regression functions. }
-  \item{error.type (optional)}{Has values in \{abs (default),rel,wei\} and specifies the error function for the Least-Square error. If "abs" is selected the error can be calculated as the sum over all parameters of sum((observed.Parameter-calculated.Parameter)^2). If "rel" is selected the error can be calculated as the sum over all parameters of sum(((observed.Parameter-calculated.Parameter)/observed.Parameter)^2). If "wei" is selected the error can be calculated as the sum over all parameters of sum(((observed.Parameter-calculated.Parameter)/mean(observed.Parameter))^2) }
-  \item{control (optional)}{Named-list for optim (see argument control - optim)}
-  \item{validity.fun (optional)}{
+  \item{x$type (optional)}{Has values in \{fit (default),diag\}. If type has value diag no fit is performed - only the individual estimates are ploted to help deciding on the parameter regression functions. }
+  \item{x$error.type (optional)}{Has values in \{abs (default),rel,wei\} and specifies the error function for the Least-Square error. If "abs" is selected the error can be calculated as the sum over all parameters of sum((observed.Parameter-calculated.Parameter)^2). If "rel" is selected the error can be calculated as the sum over all parameters of sum(((observed.Parameter-calculated.Parameter)/observed.Parameter)^2). If "wei" is selected the error can be calculated as the sum over all parameters of sum(((observed.Parameter-calculated.Parameter)/mean(observed.Parameter))^2) }
+  \item{x$control (optional)}{Named-list for optim (see argument control - optim)}
+  \item{x$validity.fun (optional)}{
   Name of function returning TRUE, if parameters fulfill requirements, FALSE otherwise.   
   }
-  \item{quantiles (optional)}{Vector with values v: 0<v<1, v[i]<v[i+1]. describing the quantile areas for the chi-square goodness of fit test.}
+  \item{x$quantiles (optional)}{Vector with values v: 0<v<1, v[i]<v[i+1]. describing the quantile areas for the chi-square goodness of fit test.}
 }
 
 
@@ -37,8 +38,8 @@ The function takes one argument "x", a named list with the following members:
 \value{ 
 This function returns a list with the following fields:
 \item{input }{List with input fields to pr() supplemented with default values.}
-\item{ind.par.est}{List containing the individual parameter estimations for each stress-level.}
-\item{struct.par.opt.result }{Complete Optimization-result gained from optim when performing Least-Square estimation.}
+\item{ind.par.est}{List containing the individual parameter estimations for each stress-level - if LS-fit is done.}
+\item{struct.par.opt.result }{Complete Optimization-result gained from optim.}
 \item{struct.par.est}{Parameter values gained from the Least-Square estimation of the structural parameter used in the parameter functions.}
 \item{chi2.test}{List containing values gained from the chi-squared test performed based on the Least-Square fit.}
 }

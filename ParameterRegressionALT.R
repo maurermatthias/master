@@ -1,5 +1,6 @@
 #source('function.R')
-
+library('stats')
+library('evir')
 
 ###################################################################
 #function gets a named list
@@ -15,8 +16,6 @@
 #control.......  named-list for optim (see control - optim)
 #validity.fun .. name of function returning true, if parameter fulfill requirements, false otherwise
 pr<-function(x){
-  library('stats')
-  library('evir')
   
   ###################################################################
   ###################################################################
@@ -540,10 +539,10 @@ pr<-function(x){
       
       #create new plot
       plot.new()
-      #d=0.225
+      d=0.225
       
       #plot first parameter
-      par(fig=c(0,1,1-2*0.225,1), new=TRUE)
+      par(fig=c(0,1,1-2*d,1), new=TRUE)
       plot(x.points,y.points1,xlab="",ylab=name1)
       if(type=="fit"){
         polygon(x.line,y.line1,border="red")
@@ -551,7 +550,7 @@ pr<-function(x){
       }
       
       #plot second parameter
-      par(fig=c(0,1,0.5-0.225,0.5+d), new=TRUE)
+      par(fig=c(0,1,0.5-d,0.5+d), new=TRUE)
       plot(x.points,y.points2,xlab="",ylab=name2)
       if(type=="fit"){
         polygon(x.line,y.line2,border="red")
@@ -559,7 +558,7 @@ pr<-function(x){
       }
       
       #plot third parameter
-      par(fig=c(0,1,0,2*0.225), new=TRUE)
+      par(fig=c(0,1,0,2*d), new=TRUE)
       plot(x.points,y.points3,xlab="stress",ylab=name3)
       if(type=="fit"){
         polygon(x.line,y.line3,border="red")
@@ -611,7 +610,7 @@ pr<-function(x){
   #plot and return in case of diagnosis plot
   if(x[["type"]]=="diag"){
     pr.parplot(val)
-    return(NULL);
+    return(val);
   }
   
   #estimate structure parameter
@@ -619,7 +618,7 @@ pr<-function(x){
   val[["struct.par.opt.result"]]=struct.par.est;
   val[["struct.par.est"]]=struct.par.est$par;
   
-
+  
   #calculate chi2 test p-value for goodness of fit
   if(is.null(x[["quantiles"]])){
     no.observations=length(val[["input"]][["xval"]])
@@ -644,10 +643,9 @@ pr<-function(x){
 #input....input list like for pr()
 #ratio....p.u. (0<ratio<1) amount of observations per stress level used for fitting
 #times...number of times evaluation is done
-pr.sim<-function(input, ratio, times){
+pr.sim<-function(input, ratio, times, sim=NULL){
   ############################################################################
   #needed function for pr.sim
-  
   
   ##############
   #chi2-test functions
@@ -791,7 +789,7 @@ pr.sim<-function(input, ratio, times){
   #input ... input list like for pr()
   #bool ... boolvector of size length(input[["xval"]]) - specifies which values are takern for fitting (TRUE)
   #         and which ones are taking for evaluation (FALSE)
-  sim<-function(bool,input){
+  simul<-function(bool,input){
     x.fit=part(input[["xval"]],bool)
     y.fit=part(input[["yval"]],bool)
     x.eval=part(input[["xval"]],bool==FALSE)
@@ -808,7 +806,7 @@ pr.sim<-function(input, ratio, times){
     p.value=pchisq(chi2.value,df);
     return(p.value)
   }
-
+  
   status.update<-function(string){
     cat("                                                                           ", " \r")
     flush.console();
@@ -866,48 +864,141 @@ pr.sim<-function(input, ratio, times){
     }
   }
   
+  #performes simulation in case an observation is given
+  simulation.observation<-function(input,ratio,times){ 
+    input[["type"]]="fit"
+    
+    if(is.null(input[["quantiles"]]))
+      stop("Quantiles are needed for this approach!")
+    input[["sim"]]=TRUE
+    p.val=c()
+    display.steps=0.1
+    status.update("creating simulation matrix");
+    bool.m=create.rand.boolmatrix(input, ratio, times)
+    status.update("start calculation");
+    start.time = proc.time()[["elapsed"]]
+    old.val=-1;
+    for(c in 1:times){
+      if(TRUE || (c/times)%%0.1==0){
+        val=round(100*(c/times))
+        if(old.val != val){
+          old.val=val;
+          time.string=get.time(round(proc.time()[["elapsed"]]-start.time))
+          msg = paste("Calculated ",as.character(val),"% in ",time.string ,". Abort with ESC.",sep="");
+          status.update(msg);
+        }
+      }
+      bool=bool.m[,c]
+      try({
+        p.val.tmp = suppressWarnings2(simul(bool,input),"NaNs produced");
+        p.val=c(p.val,p.val.tmp)
+      }, silent=TRUE)
+    }
+    msg=paste("Simulation done in ",get.time(round(proc.time()[["elapsed"]]-start.time))," with ",as.character(round(100*length(p.val)/times)),"% success rate.",sep="");
+    status.update(msg);
+    par(mfrow=c(2,1))
+    print.edf(p.val)
+    hist(p.val,main="")
+    par(mfrow=c(1,1))
+    return(p.val)
+  }
+  
+  #generate observations for given parametervector
+  gen.obs<-function(n.vec, xval.vec, dist.par, dist){
+    observ=matrix(rep(0,2*sum(n.vec)), ncol = 2)
+    start=1;
+    for(i in 1:length(n.vec)){
+      if(dist=="gev"){
+        ob=rgev(n.vec[i],dist.par[i,1],dist.par[i,3],dist.par[i,2])
+      }else if(dist=="logn"){
+        ob=rlnorm(n.vec[i],dist.par[i,1],dist.par[i,2])
+      }else if(dist=="norm"){
+        ob=rnorm(n.vec[i],dist.par[i,1],dist.par[i,2])
+      }else if(dist=="gamma"){
+        ob=rgev(n.vec[i],dist.par[i,1],dist.par[i,2])
+      }else{
+        stop("Distribution sim[[\"dist\"]] not supportet!");
+      }
+      observ[start:(start+length(ob)-1),1]=rep(xval.vec[i],length(ob))
+      observ[start:(start+length(ob)-1),2]=ob
+      start=start+length(ob)
+    }
+    return(observ)
+  }
+  
   
   ###########################################################################
   #pr.sim functionality start
-  input[["type"]]="fit"
-  
-  if(is.null(input[["quantiles"]]))
-    stop("Quantiles are needed for this approach!")
-  input[["sim"]]=TRUE
-  p.val=c()
-  display.steps=0.1
-  status.update("creating simulation matrix");
-  bool.m=create.rand.boolmatrix(input, ratio, times)
-  status.update("start calculation");
-  start.time = proc.time()[["elapsed"]]
-  old.val=-1;
-  for(c in 1:times){
-    if(TRUE || (c/times)%%0.1==0){
-      val=round(100*(c/times))
-      if(old.val != val){
-        old.val=val;
-        time.string=get.time(round(proc.time()[["elapsed"]]-start.time))
-        msg = paste("Calculated ",as.character(val),"% in ",time.string ,". Abort with ESC.",sep="");
-        status.update(msg);
+  if(is.null(sim)){
+    return(simulation.observation(input,ratio,times))
+  }else{
+    if(is.null(sim[["dist"]]))
+      stop("A distribution (sim[[\"dist\"]]) has to be defined for generating a sample!");
+    if(is.null(sim[["xval"]]))
+      stop("Predictor-vector (sim[[\"xval\"]]) values for the sample must be defined!");
+    if(is.null(sim[["n"]]))
+      stop("A vector (sim[[\"n\"]]) must be defined - specifying the number of observation at the predictor values!");
+    if(is.null(input[["struct.fun"]]))
+      stop("Names of the parameter-function (input[[\"struct.fun\"]]) must be supplied!")
+    if(is.null(sim[["par"]]))
+      stop("A vector (sim[[\"par\"]]) must be defined - specifying the structur parameter used for the simulation!");
+    
+    #accessing needed data
+    func.name=input[["struct.fun"]]
+    xval.vec=sim[["xval"]]
+    dist=sim[["dist"]]
+    n.vec=sim[["n"]]
+    par=sim[["par"]]
+    input[["sim"]]=TRUE;
+    if(!is.null(input[["validity.fun"]])){
+      val.fun=match.fun(input[["validity.fun"]]);
+    }else{
+      val.fun=NULL
+    }
+    
+    #generate distribution-parameter vector (for each stress level)
+    dist.par=matrix(rep(0,length(func.name)*length(xval.vec)), nrow=length(xval.vec))
+    for(i in 1:length(func.name)){
+      fun=match.fun(func.name[i]);
+      for(j in 1:length(xval.vec)){
+        if(!is.null(val.fun) && val.fun(xval.vec[j],par) == FALSE)
+          stop("The vector (sim[[\"par\"]]) is not valid (with given input[[\"validity.fun\"]] and sim[[\"xval\"]])!");
+        dist.par[j,i]=fun(xval.vec[j],par);
       }
     }
-    bool=bool.m[,c]
-    try({
-      p.val.tmp = suppressWarnings2(sim(bool,input),"NaNs produced");
-      p.val=c(p.val,p.val.tmp)
-      }, silent=TRUE)
+    
+    res=matrix(rep(0,times*length(par)), nrow=times)
+    suc=0;
+    old.val=0;
+    start.time=proc.time()[["elapsed"]]
+    while(suc<times){
+      observ=gen.obs(n.vec,xval.vec, dist.par, dist)
+      input[["xval"]]=observ[,1]
+      input[["yval"]]=observ[,2]
+      cont=0
+      try({lsg=pr(input);cont=1},silent=TRUE)
+      if(cont!=0){
+        if(lsg[["struct.par.opt.result"]][["convergence"]]==0){
+          suc=suc+1;
+          res[suc,]=lsg[["struct.par.est"]]
+          val=round(100*(suc/times))
+          if(old.val != val){
+            old.val=val;
+            time.string=get.time(round(proc.time()[["elapsed"]]-start.time))
+            msg = paste("Calculated ",as.character(val),"% in ",time.string ,". Abort with ESC.",sep="");
+            status.update(msg);
+          }
+        }
+      }
+    }
+    return(res);
   }
-  msg=paste("Simulation done in ",get.time(round(proc.time()[["elapsed"]]-start.time))," with ",as.character(round(100*length(p.val)/times)),"% success rate.",sep="");
-  status.update(msg);
-  par(mfrow=c(2,1))
-  print.edf(p.val)
-  hist(p.val,main="")#
-  par(mfrow=c(1,1))
-  return(p.val)
+  
 }
 
 #load example dataset
 load.data<-function(){
+  return(3)
   data=matrix(rep(NA,600),nrow=200)
   data[1,1]=294.3; data[1,2]=5300; data[1,3]=0; data[2,1]=294.3; data[2,2]=6200; 
   data[2,3]=0; data[3,1]=294.3; data[3,2]=6500; data[3,3]=0; data[4,1]=294.3; 
@@ -1031,6 +1122,3 @@ load.data<-function(){
   data[199,2]=1321000; data[199,3]=0; data[200,1]=51.5; data[200,2]=1630000; data[200,3]=0;
   return(data)
 }
-
-
-

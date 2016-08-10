@@ -42,7 +42,19 @@ part<-function(data,bool)
   ret
 }
 
-
+#removes one observation from data matrix
+rem.obs<-function(data,obs){
+  if(obs>1 && obs<dim(data)[1]){
+    d2=matrix(c(data[,1][1:(obs-1)],data[,1][(obs+1):dim(data)[1]],data[,2][1:(obs-1)],data[,2][(obs+1):dim(data)[1]]),ncol=2)
+    return(d2)
+  }else if(obs==1){
+    d2=matrix(c(data[,1][(obs+1):dim(data)[1]],data[,2][(obs+1):dim(data)[1]]),ncol=2)
+    return(d2)
+  }else if(obs==dim(data)[1]){
+    d2=matrix(c(data[,1][1:(obs-1)],data[,2][1:(obs-1)]),ncol=2)
+    return(d2)
+  }
+}
 
 
 

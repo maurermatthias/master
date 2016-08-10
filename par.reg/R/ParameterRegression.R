@@ -243,6 +243,58 @@ pr<-function(x){
     return(error.value);
   }
   
+  #ML error function for optimization
+  error.ml<-function(parameter,data){
+    input=data[[1]]
+    dist=input[["distr"]]
+    str.fun=input[["struct.fun"]]
+    x=input[["xval"]]
+    if(!is.null(input[["validity.fun"]])){
+      val.fun=match.fun(input[["validity.fun"]])
+      if(val.fun(x,parameter)==FALSE)
+        return(Inf);
+    }
+    y=input[["yval"]]
+    stresslevel=unique(x)
+    dist.par=matrix(rep(NA,length(stresslevel)*length(str.fun)),nrow=length(stresslevel))
+    for(j in 1:length(str.fun)){
+      fun=match.fun(str.fun[j])
+      for(i in 1:length(stresslevel)){
+        dist.par[i,j]=fun(stresslevel[i],parameter)
+      }
+    }
+    value=0;
+    for(i in 1:length(stresslevel)){
+      ytmp=part(y,x==stresslevel[i])
+      value=value+getLLValue(ytmp,dist,dist.par[i,])
+    }
+    return(-value)
+  }
+  
+  #return Log-Likelihoodvalues for one stress-level
+  getLLValue<-function(y,dist,par){
+    value=0
+    for(i in 1:length(y)){
+      if(dist=="norm"){
+        #value=value+log(1/(par[2]*sqrt(2*pi)))-(1/2)*((y[i]-par[1])/par[2])^2
+        value=value+dnorm(y[i],par[1],par[2],log=TRUE)
+      }else if(dist=="logn"){
+        #value=value+log(1/(sqrt(2*pi)*par[2]*y[i]))-(log(y[i])-par[1])^2/(2*(par[2])^2)
+        value=value+dlnorm(y[i],par[1],par[2],log=TRUE)
+      }else if(dist=="gamma"){
+        #value=value+log(1/gamma(par[1]))+par[1]*log(1/par[2])+(par[1]-1)*log(y[i])-y[i]/par[2]
+        value=value+dgamma(y[i],shape=par[1],scale=par[2],log=TRUE)
+      }else if(dist=="gev"){
+        if(par[1] <0 && par[3]-par[2]/par[1] < y[i])
+          return(-Inf);
+        value=value+log(dgev(y[i],xi=par[1],mu=par[3],sigma=par[2]))
+      }else{
+        stop("Distribution not supported!");
+      }
+    }
+    return(value)
+  }
+  
   #uses grid search to find error.ls-function parameter for finite function value 
   grid.search<-function(data){
     max.it=25;
@@ -270,6 +322,18 @@ pr<-function(x){
     data=list(x,ind.par.est);
     start.par=find.start.par(data);
     o.result=suppressWarnings(optim(start.par,fn=error.ls,data=data, control=control))
+    return(o.result);
+  }
+  
+  estimateStructureParameterML<-function(x){
+    if(is.null(x[["control"]])){
+      control = list(maxit = 1000);
+    }else{
+      control = x[["control"]];
+    }
+    data=list(x);
+    start.par=find.start.par(data);
+    o.result=suppressWarnings(optim(start.par,fn=error.ml,data=data, control=control))
     return(o.result);
   }
   
@@ -355,7 +419,7 @@ pr<-function(x){
     quantiles=val[["input"]][["quantiles"]];
     struct.parameter=val[["struct.par.est"]]
     parameter.function.name=val[["input"]][["struct.fun"]]
-    nr.dist.parameter=val[["ind.par.est"]][["numberOfParameters"]]
+    nr.dist.parameter=length(val[["input"]][["struct.fun"]])
     
     #calculate distribution parameters for each stress level
     dist.parameter=matrix(rep(0,nr.dist.parameter*length(stress)),nrow=length(stress), ncol=nr.dist.parameter)
@@ -547,6 +611,8 @@ pr<-function(x){
       if(type=="fit"){
         polygon(x.line,y.line1,border="red")
         legend(x="topright", legend=c(paste("estimate ", name1, sep=""),paste("observation ", name1, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+        
+        #legend(x="topright", legend=c("alg. Schaetzung          ","ind. Schaetzung          "), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
       }
       
       #plot second parameter
@@ -555,23 +621,27 @@ pr<-function(x){
       if(type=="fit"){
         polygon(x.line,y.line2,border="red")
         legend(x="topright", legend=c(paste("estimate ", name2, sep=""),paste("observation ", name2, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+        
+        #legend(x="topright", legend=c("alg. Schaetzung          ","ind. Schaetzung          "), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
       }
       
       #plot third parameter
       par(fig=c(0,1,0,2*d), new=TRUE)
-      plot(x.points,y.points3,xlab="stress",ylab=name3)
+      plot(x.points,y.points3,xlab="Belastungsniveau",ylab=name3)
       if(type=="fit"){
         polygon(x.line,y.line3,border="red")
         legend(x="topright", legend=c(paste("estimate ", name3, sep=""),paste("observation ", name3, sep="")), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
+        
+        #legend(x="topright", legend=c("alg. Schaetzung          ","ind. Schaetzung          "), col = c("red","black"), lty = c("solid",NA), pch=c(NA,"o"))
       }
     }
     
     
     ############################################################################
     #functionality pr.parplot start
-    if(x[["ind.par.est"]][["numberOfParameters"]]==2){
+    if(length(x[["input"]][["struct.fun"]])==2 || x[["ind.par.est"]][["numberOfParameters"]]==2){
       pr.parplot2(x);
-    }else if(x[["ind.par.est"]][["numberOfParameters"]]==3){
+    }else if(length(x[["input"]][["struct.fun"]])==3 || x[["ind.par.est"]][["numberOfParameters"]]==3){
       pr.parplot3(x);
     }else{
       stop("Printing of parameter only implemented for two and three parameters!");
@@ -598,7 +668,14 @@ pr<-function(x){
     }
   }
   
+  ###TEST
+  ml=TRUE
+  if(is.null(x[["ML"]]) || x[["ML"]]!=TRUE){
+    ml=FALSE
+  }
+  
   #estimate parameters for each predictor level
+  #(not needed for ML-estimate)
   ind.par.est = suppressWarnings2(estimateParameters(x),"NaNs produced");
   
   
@@ -606,6 +683,8 @@ pr<-function(x){
   val = list();
   val[["input"]]=x;
   val[["ind.par.est"]]=ind.par.est;
+
+    
   
   #plot and return in case of diagnosis plot
   if(x[["type"]]=="diag"){
@@ -614,9 +693,15 @@ pr<-function(x){
   }
   
   #estimate structure parameter
-  struct.par.est = estimateStructureParameter(x,ind.par.est)
-  val[["struct.par.opt.result"]]=struct.par.est;
-  val[["struct.par.est"]]=struct.par.est$par;
+  if(!ml){
+    struct.par.est = estimateStructureParameter(x,ind.par.est)
+    val[["struct.par.opt.result"]]=struct.par.est;
+    val[["struct.par.est"]]=struct.par.est$par;
+  }else{
+    struct.par.est = estimateStructureParameterML(x)
+    val[["struct.par.opt.result"]]=struct.par.est;
+    val[["struct.par.est"]]=struct.par.est$par;
+  }
   
 
   #calculate chi2 test p-value for goodness of fit
@@ -643,10 +728,9 @@ pr<-function(x){
 #input....input list like for pr()
 #ratio....p.u. (0<ratio<1) amount of observations per stress level used for fitting
 #times...number of times evaluation is done
-pr.sim<-function(input, ratio, times, sim=NULL){
+pr.sim<-function(input, sim){
   ############################################################################
   #needed function for pr.sim
-  
   
   ##############
   #chi2-test functions
@@ -904,19 +988,146 @@ pr.sim<-function(input, ratio, times, sim=NULL){
     return(p.val)
   }
   
+  #generate observations for given parametervector
+  gen.obs<-function(n.vec, xval.vec, dist.par, dist){
+    observ=matrix(rep(0,2*sum(n.vec)), ncol = 2)
+    start=1;
+    for(i in 1:length(n.vec)){
+      if(dist=="gev"){
+        ob=rgev(n.vec[i],dist.par[i,1],dist.par[i,3],dist.par[i,2])
+      }else if(dist=="logn"){
+        ob=rlnorm(n.vec[i],dist.par[i,1],dist.par[i,2])
+      }else if(dist=="norm"){
+        ob=rnorm(n.vec[i],dist.par[i,1],dist.par[i,2])
+      }else if(dist=="gamma"){
+        ob=rgev(n.vec[i],dist.par[i,1],dist.par[i,2])
+      }else{
+        stop("Distribution sim[[\"dist\"]] not supportet!");
+      }
+      observ[start:(start+length(ob)-1),1]=rep(xval.vec[i],length(ob))
+      observ[start:(start+length(ob)-1),2]=ob
+      start=start+length(ob)
+    }
+    return(observ)
+  }
+  
+  ##############################################
+  #plot changes
+  
+  plot.changes<-function(mat,par=NULL){
+    for(j in 1: length(mat[1,])){
+      m=c()
+      s=c()
+      for(i in 2:length(mat[,1])){
+        v=mat[1:i,j]
+        m=c(m,mean(v))
+        s=c(s,sd(v))
+      }
+      plot.new()
+      
+      
+      #plot first parameter
+      par(fig=c(0,1,0.4,1),new=TRUE)
+      if(!is.null(par)){
+        ymin=round(min(m,par[j])*100)/100
+        ymax=round(max(m,par[j])*100)/100
+        plot(m,ylab="mean",xlab="",main=paste("Parameter ",as.character(j),sep=""),type="l",ylim=c(ymin,ymax))
+        abline(h=par[j],col="red")
+      }else{
+        plot(m,ylab="mean",xlab="",main=paste("Parameter ",as.character(j),sep=""),type="l")
+      }
+      par(fig=c(0,1,0,0.6), new=TRUE)
+      plot(s,ylab="sd",xlab="",type="l")
+      cat ("Press [enter] to continue")
+      line <- readline()
+    }
+  }
+  
   
   ###########################################################################
   #pr.sim functionality start
-  if(is.null(sim)){
+  
+
+  if(is.null(sim[["type"]]))
+    stop("Specification of simulation (sim[[\"type\"]]) is missing!");
+  
+  if(sim[["type"]]=="observe"){
+    if(is.null(sim[["ratio"]]))
+      stop("Simulation ratio (sim[[\"ratio\"]]) is missing!");
+    if(is.null(sim[["times"]]))
+      stop("Simulation number of repetitions (sim[[\"times\"]]) is missing!");
+    ratio=sim[["ratio"]];
+    times=sim[["times"]];
     return(simulation.observation(input,ratio,times))
-  }else{
-    if(is.null(sim[["dist"]]))
-      stop("A distribution (sim[[\"dist\"]]) has to be defined for generating a sample!");
+  }else if(sim[["type"]]=="generate"){
+    if(is.null(sim[["times"]]))
+      stop("Simulation number of repetitions (sim[[\"times\"]]) is missing!");
     if(is.null(sim[["xval"]]))
       stop("Predictor-vector (sim[[\"xval\"]]) values for the sample must be defined!");
     if(is.null(sim[["n"]]))
-      stop("A vector (sim[[\"n\"]]) must be defined specifying the number of observation at the predictor values!");
-    return(NULL);
+      stop("A vector (sim[[\"n\"]]) must be defined - specifying the number of observation at the predictor values!");
+    if(is.null(input[["struct.fun"]]))
+      stop("Names of the parameter-function (input[[\"struct.fun\"]]) must be supplied!")
+    if(is.null(sim[["par"]]))
+      stop("A vector (sim[[\"par\"]]) must be defined - specifying the structur parameter used for the simulation!");
+    
+    #accessing needed data
+    times=sim[["times"]];
+    func.name=input[["struct.fun"]]
+    xval.vec=sim[["xval"]]
+    dist=input[["distr"]]
+    n.vec=sim[["n"]]
+    par=sim[["par"]]
+    input[["sim"]]=TRUE;
+    if(!is.null(input[["validity.fun"]])){
+      val.fun=match.fun(input[["validity.fun"]]);
+    }else{
+      val.fun=NULL
+    }
+    
+    #generate distribution-parameter vector (for each stress level)
+    dist.par=matrix(rep(0,length(func.name)*length(xval.vec)), nrow=length(xval.vec))
+    for(i in 1:length(func.name)){
+      fun=match.fun(func.name[i]);
+      for(j in 1:length(xval.vec)){
+        if(!is.null(val.fun) && val.fun(xval.vec[j],par) == FALSE)
+          stop("The vector (sim[[\"par\"]]) is not valid (with given input[[\"validity.fun\"]] and sim[[\"xval\"]])!");
+        dist.par[j,i]=fun(xval.vec[j],par);
+      }
+    }
+    
+    res=matrix(rep(0,times*length(par)), nrow=times)
+    suc=0;
+    old.val=0;
+    start.time=proc.time()[["elapsed"]]
+    while(suc<times){
+      observ=gen.obs(n.vec,xval.vec, dist.par, dist)
+      input[["xval"]]=observ[,1]
+      input[["yval"]]=observ[,2]
+      cont=0
+      try({lsg=suppressWarnings(pr(input));cont=1},silent=TRUE)
+      if(cont!=0){
+        if(lsg[["struct.par.opt.result"]][["convergence"]]==0){
+          suc=suc+1;
+          res[suc,]=lsg[["struct.par.est"]]
+          val=round(100*(suc/times))
+          if(old.val != val){
+            old.val=val;
+            time.string=get.time(round(proc.time()[["elapsed"]]-start.time))
+            msg = paste("Calculated ",as.character(val),"% in ",time.string ,". Abort with ESC.",sep="");
+            status.update(msg);
+          }
+        }
+      }
+    }
+    time.string=get.time(round(proc.time()[["elapsed"]]-start.time))
+    print(paste("Calculation done in ",time.string,"!                       ",sep=""));
+    if(is.null(sim[["plot"]]) || sim[["plot"]]==TRUE){
+      plot.changes(res,par)
+    }
+    return(res);
+  }else{
+    stop("Simulation type (sim[[\"type\"]]) needs to be \"generate\" or \"observe\"!");
   }
 
 }
@@ -1046,6 +1257,4 @@ load.data<-function(){
   data[199,2]=1321000; data[199,3]=0; data[200,1]=51.5; data[200,2]=1630000; data[200,3]=0;
   return(data)
 }
-
-
 
